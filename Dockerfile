@@ -14,12 +14,12 @@ RUN pip install pyhsm[db,daemon]
 RUN pip install sqlalchemy
 RUN pip install mysqlclient
 
-
 #Création des ressources
 RUN mkdir -p /etc/yubico/yhsm
 
 COPY ./generateKey.sh /etc/yubico/yhsm
 COPY ./generate_keys_bdd.py /etc/yubico/yhsm
+COPY ./decrypt_aead_bdd.py /etc/yubico/yhsm
 
 # VERSION FICHIER
 CMD ["yhsm-yubikey-ksm", "-D", "/etc/yubico/yhsm/keys.json", "-v",  "--key-handle", "1", "--addr", "0.0.0.0"]
