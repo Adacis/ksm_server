@@ -1,7 +1,6 @@
 # ksm_server
 KSM server compatible hsm for yubikey OTP (compatible with all yubikey
 
-docker-compose.yml
 .env
 ```
 USERDB=otp
@@ -9,7 +8,7 @@ PASSWORDDB=otp
 DATABASE=otp
 DATABASEIP=database
 ```
-
+docker-compose.yml
 ```
 version: '3.8'
 services:
