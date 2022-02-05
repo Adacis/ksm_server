@@ -71,7 +71,7 @@ def parse_args():
 
 def args_fixup(args):
     # if not os.path.isdir(args.output_dir):
-    #     sys.stderr.write("Output directory '%s' does not exist.\n" % (args.output_dir))
+    #     sys.stderr.write("Output directory '{}' does not exist.\n".format(args.output_dir))
     #     sys.exit(1)
 
     keyhandles_fixup(args)
@@ -97,7 +97,7 @@ def start_id_fixup(start_id):
         n = int(hexstr, 16)
 
     if(n < 0):
-        sys.stderr.write("Start ID must be greater than 0, was %d\n" % (n))
+        sys.stderr.write("Start ID must be greater than 0, was {}\n".format(n))
         sys.exit(1)
 
     return n
@@ -150,7 +150,7 @@ def insert_query(publicId, aead, keyhandle):
 def gen_keys(hsm, args):
     for int_id in range(args.start_id, args.start_id + args.count):
 
-        public_id = ("%x" % int_id).rjust(args.public_id_chars, '0')
+        public_id = "{:x}".format(int_id).rjust(args.public_id_chars, '0')
         padded_id = pyhsm.yubikey.modhex_encode(public_id)
         print(padded_id)
         num_bytes = len(pyhsm.aead_cmd.YHSM_YubiKeySecret('a' * 16, 'b' * 6).pack())
@@ -159,9 +159,9 @@ def gen_keys(hsm, args):
         for kh in args.key_handles.keys():
             # numero de la clef a utiliser
             if args.random_nonce:
-                nonce = ""
+                nonce = b""
             else:
-                nonce = public_id.decode('hex')
+                nonce = bytes.fromhex(public_id)
 
             aead = hsm.generate_aead(nonce, kh)
             pt = pyhsm.soft_hsm.aesCCM(hsm.keys[kh], aead.key_handle, aead.nonce, aead.data, decrypt = True)
@@ -169,7 +169,7 @@ def gen_keys(hsm, args):
             uid = pt[pyhsm.defines.KEY_SIZE:]
 
         if not insert_query(padded_id, aead, kh):
-            print("WARNING: could not insert %s" % public_id)
+            print("WARNING: could not insert {}".format(public_id))
 
 
 def main():

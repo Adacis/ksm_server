@@ -42,7 +42,7 @@ def main():
     key = pt[:pyhsm.defines.KEY_SIZE]
     uid = pt[pyhsm.defines.KEY_SIZE:]
     
-    print("ykpersonalize -1 -ofixed=%s -ouid=%s -a%s" % (args.public_id,uid.encode('hex'),key.encode('hex')))
+    print("ykpersonalize -1 -ofixed={} -ouid={} -a{}".format(args.public_id, uid.hex(), key.hex()))
 
 if __name__ == '__main__':
     main()

@@ -178,6 +178,36 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
             return self.headers.getheader('x-forwarded-for', addr)
         return addr
 
+def aead_filename(aead_dir, key_handle, public_id):
+    """
+    Return the filename of the AEAD for this public_id.
+    """
+    parts = [aead_dir, key_handle] + util.group(public_id, 2) + [public_id]
+    return os.path.join(*parts)
+
+class FSBackend(object):
+
+    def __init__(self, aead_dir, key_handles):
+        self.aead_dir = aead_dir
+        self.key_handles = key_handles
+        if not os.path.isdir(aead_dir):
+            raise ValueError("AEAD directory '{}' does not exist.".format(aead_dir))
+
+    def load_aead(self, public_id):
+        fn_list = []
+        for kh, kh_int in self.key_handles:
+            aead = aead_cmd.YHSM_GeneratedAEAD(None, kh_int, '')
+            filename = aead_filename(self.aead_dir, kh, public_id)
+            fn_list.append(filename)
+            try:
+                aead.load(filename)
+                if not aead.nonce:
+                    aead.nonce = yubikey.modhex_decode(public_id).decode('hex')
+                return aead
+            except IOError:
+                continue
+        raise Exception("Attempted to load AEAD from : {}".format(fn_list))
+
 class SQLBackend(object):
     def __init__(self, db_url):
         self.engine = sqlalchemy.create_engine(db_url, pool_pre_ping=True)
@@ -395,12 +425,22 @@ def main():
 
     aead_backend = None
 
-    try:
-        aead_backend = SQLBackend(args.db_url)
-    except Exception as e:
-        my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
-                        'Could not connect to database "%s" : %s' % (args.db_url, e))
-        return 1
+    if args.db_url:
+        # Using an SQL database for AEADs
+        try:
+            aead_backend = SQLBackend(args.db_url)
+        except Exception as e:
+            my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
+                           'Could not connect to database "%s" : %s' % (args.db_url, e))
+            return 1
+    else:
+        # Using the filesystem for AEADs
+        try:
+            aead_backend = FSBackend(args.aead_dir, args.key_handles)
+        except Exception as e:
+            my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
+                           'Could not create AEAD FSBackend: %s' % e)
+            return 1
 
     if args.device == '-':
         print("soft")

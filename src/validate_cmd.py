@@ -40,7 +40,7 @@ class YHSM_Cmd_AEAD_Validate_OTP(YHSM_AEAD_Cmd):
         #   uint8_t otp[YSM_OTP_SIZE];              // OTP
         #   uint8_t aead[YSM_YUBIKEY_AEAD_SIZE];    // AEAD block
         # } YSM_AEAD_YUBIKEY_OTP_DECODE_REQ;
-        fmt = "< %is I %is %is" % (defines.YSM_AEAD_NONCE_SIZE, \
+        fmt = "< {:d}s I {:d}s {:d}s".format(defines.YSM_AEAD_NONCE_SIZE, \
                                        defines.YSM_OTP_SIZE, \
                                        defines.YSM_YUBIKEY_AEAD_SIZE)
         packed = struct.pack(fmt, self.public_id, \
@@ -59,7 +59,7 @@ class YHSM_Cmd_AEAD_Validate_OTP(YHSM_AEAD_Cmd):
         #   uint16_t tstpl;                      // Timestamp (low part)
         #   YHSM_STATUS status;                  // Validation status
         # } YHSM_AEAD_OTP_DECODED_RESP;
-        fmt = "< %is I H B B H B" % (defines.YSM_PUBLIC_ID_SIZE)
+        fmt = "< {:d}s I H B B H B".format(defines.YSM_PUBLIC_ID_SIZE)
         public_id, \
             key_handle, \
             use_ctr, \
@@ -68,7 +68,7 @@ class YHSM_Cmd_AEAD_Validate_OTP(YHSM_AEAD_Cmd):
             ts_low, \
             self.status = struct.unpack(fmt, data)
 
-        util.validate_cmd_response_str('public_id', public_id, self.public_id)
+        util.validate_cmd_response_bytes('public_id', public_id, self.public_id)
         util.validate_cmd_response_hex('key_handle', key_handle, self.key_handle)
 
         if self.status == defines.YSM_STATUS_OK:
@@ -89,7 +89,7 @@ class YHSM_ValidationResult():
     @ivar session_ctr: The 8-bit volatile session counter of the YubiKey
     @ivar ts_high: The high 8 bits of the 24-bit 8 hz timer since power-on of the YubiKey
     @ivar ts_low: The low 16 bits of the 24-bit 8 hz timer since power-on of the YubiKey
-    @type public_id: string
+    @type public_id: bytes
     @type use_ctr: integer
     @type session_ctr: integer
     @type ts_high: integer
@@ -106,10 +106,10 @@ class YHSM_ValidationResult():
         self.ts_low = ts_low
 
     def __repr__(self):
-        return '<%s instance at %s: public_id=%s, use_ctr=%i, session_ctr=%i, ts=%i/%i>' % (
+        return '<{} instance at {}: public_id={}, use_ctr={}, session_ctr={}, ts={}/{}>' % (
             self.__class__.__name__,
             hex(id(self)),
-            self.public_id.encode('hex'),
+            self.public_id.hex(),
             self.use_ctr,
             self.session_ctr,
             self.ts_high,

@@ -52,13 +52,12 @@ def key_handle_to_int(this):
         if this[:2] == "0x":
             return int(this, 16)
         if (len(this) == 4):
-            num = struct.unpack('<I', this)[0]
+            num = int.from_bytes(this, byteorder='little')
             return num
-    raise ksmexception.YHSM_Error("Could not parse key_handle '%s'" % (this))
+    raise ksmexception.YHSM_Error("Could not parse key_handle '{}'".format(this))
 
 def input_validate_str(string, name, max_len=None, exact_len=None):
     """ Input validation for strings. """
-    #benjamin
     if type(string) is not str:
         raise ksmexception.YHSM_WrongInputType(name, str, type(string))
     if max_len != None and len(string) > max_len:
@@ -68,7 +67,8 @@ def input_validate_str(string, name, max_len=None, exact_len=None):
     return string
 
 def input_validate_bytes(byt, name, max_len=None, exact_len=None):
-    """ Input validation for strings. """
+    """ Input validation for bytes. """
+    #benjamin
     if type(byt) is not bytes:
         raise ksmexception.YHSM_WrongInputType(name, bytes, type(byt))
     if max_len != None and len(byt) > max_len:
@@ -111,10 +111,10 @@ def input_validate_yubikey_secret(data, name='data'):
     """ Input validation for YHSM_YubiKeySecret or string. """
     if isinstance(data, aead_cmd.YHSM_YubiKeySecret):
         data = data.pack()
-    return input_validate_str(data, name)
+    return input_validate_bytes(data, name)
 
 def input_validate_aead(aead, name='aead', expected_len=None, max_aead_len = defines.YSM_AEAD_MAX_SIZE):
-    """ Input validation for YHSM_GeneratedAEAD or string. """
+    """ Input validation for YHSM_GeneratedAEAD or bytes. """
     if isinstance(aead, aead_cmd.YHSM_GeneratedAEAD):
         aead = aead.data
     if expected_len != None:
@@ -142,15 +142,15 @@ def validate_cmd_response_hex(name, got, expected):
     return got
 
 
-def validate_cmd_response_str(name, got, expected, hex_encode=True):
+def validate_cmd_response_bytes(name, got, expected, hex_encode=True):
     """
     Check that some value returned in the response to a command matches what
     we put in the request (the command).
     """
     if got != expected:
         if hex_encode:
-            got_s = got.encode('hex')
-            exp_s = expected.encode('hex')
+            got_s = got.hex()
+            exp_s = expected.hex()
         else:
             got_s = got
             exp_s = expected
@@ -164,8 +164,8 @@ def validate_cmd_response_nonce(got, used):
     A request nonce of 000000000000 means the HSM should generate a nonce internally though,
     so if 'used' is all zeros we actually check that 'got' does NOT match 'used'.
     """
-    if used == bytes.fromhex('000000000000'):
+    if used == b'\x00' * defines.YSM_EAD_NONCE_SIZE:
         if got == used:
             raise ksmexception.pyhsm
         return got
-    return validate_cmd_response_str('nonce', got, used)
+    return validate_cmd_response_bytes('nonce', got, used)
