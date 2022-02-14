@@ -28,9 +28,9 @@ import ksmexception
 import util
 from cmd import YHSM_Cmd
 
-YHSM_AEAD_File_Marker = 'YubiHSM AEAD\n'
+YHSM_AEAD_File_Marker = b'YubiHSM AEAD\n'
 # AEADs generated on Windows using pyhsm <= 1.1.1 will have CRLF instead of LF.
-YHSM_AEAD_CRLF_File_Marker = YHSM_AEAD_File_Marker[:-1] + '\r\n'
+YHSM_AEAD_CRLF_File_Marker = YHSM_AEAD_File_Marker[:-1] + b'\r\n'
 
 class YHSM_AEAD_Cmd(YHSM_Cmd):
     """
@@ -45,15 +45,15 @@ class YHSM_AEAD_Cmd(YHSM_Cmd):
 
     def __repr__(self):
         if self.executed:
-            return '<%s instance at %s: nonce=%s, key_handle=0x%x, status=%s>' % (
+            return '<{} instance at {}: nonce={}, key_handle=0x{:x}, status={}>'.format(
                 self.__class__.__name__,
                 hex(id(self)),
-                self.nonce.encode('hex'),
+                self.nonce.hex(),
                 self.key_handle,
                 defines.status2str(self.status)
                 )
         else:
-            return '<%s instance at %s (not executed)>' % (
+            return '<{} instance at {} (not executed)>'.format(
                 self.__class__.__name__,
                 hex(id(self))
                 )
@@ -73,7 +73,7 @@ class YHSM_AEAD_Cmd(YHSM_Cmd):
         nonce, \
             key_handle, \
             self.status, \
-            num_bytes = struct.unpack_from("< %is I B B" % (defines.YSM_AEAD_NONCE_SIZE), data, 0)
+            num_bytes = struct.unpack_from("< {:d}s I B B".format(defines.YSM_AEAD_NONCE_SIZE), data, 0)
 
         util.validate_cmd_response_hex('key_handle', key_handle, self.key_handle)
 
@@ -102,7 +102,7 @@ class YHSM_Cmd_AEAD_Generate(YHSM_AEAD_Cmd):
         #   uint8_t numBytes;                   // Number of data bytes
         #   uint8_t data[YSM_DATA_BUF_SIZE];    // Data
         # } YSM_AEAD_GENERATE_REQ;
-        fmt = "< %is I B %is" % (defines.YSM_AEAD_NONCE_SIZE, len(self.data))
+        fmt = "< {:d}s I B {:d}s".format(defines.YSM_AEAD_NONCE_SIZE, len(self.data))
         packed = struct.pack(fmt, nonce, key_handle, len(self.data), self.data)
         YHSM_AEAD_Cmd.__init__(self, stick, defines.YSM_AEAD_GENERATE, packed)
 
@@ -121,7 +121,7 @@ class YHSM_Cmd_AEAD_Random_Generate(YHSM_AEAD_Cmd):
         #   uint32_t keyHandle;                 // Key handle
         #   uint8_t numBytes;                   // Number of bytes to randomize
         # } YSM_RANDOM_AEAD_GENERATE_REQ;
-        fmt = "< %is I B" % (defines.YSM_AEAD_NONCE_SIZE)
+        fmt = "< {:d}s I B".format(defines.YSM_AEAD_NONCE_SIZE)
         packed = struct.pack(fmt, nonce, key_handle, num_bytes)
         YHSM_AEAD_Cmd.__init__(self, stick, defines.YSM_RANDOM_AEAD_GENERATE, packed)
 
@@ -146,7 +146,7 @@ class YHSM_Cmd_AEAD_Buffer_Generate(YHSM_AEAD_Cmd):
         #   uint8_t nonce[YSM_AEAD_NONCE_SIZE]; // Nonce (publicId for Yubikey AEADs)
         #   uint32_t keyHandle;                 // Key handle
         # } YSM_BUFFER_AEAD_GENERATE_REQ;
-        packed = struct.pack("< %is I" % (defines.YSM_AEAD_NONCE_SIZE), \
+        packed = struct.pack("< {:d}s I".format(defines.YSM_AEAD_NONCE_SIZE), \
                                  self.nonce, self.key_handle)
         YHSM_AEAD_Cmd.__init__(self, stick, defines.YSM_BUFFER_AEAD_GENERATE, packed)
 
@@ -174,7 +174,7 @@ class YHSM_Cmd_AEAD_Decrypt_Cmp(YHSM_Cmd):
         #   uint8_t numBytes;                   // Number of data bytes (cleartext + aead)
         #   uint8_t data[YSM_MAX_PKT_SIZE - 0x10]; // Data (cleartext + aead). Empty cleartext validates aead only
         # } YSM_AEAD_DECRYPT_CMP_REQ;
-        fmt = "< %is I B %is" % (defines.YSM_AEAD_NONCE_SIZE, len(data))
+        fmt = "< {:d}s I B {:d}s".format(defines.YSM_AEAD_NONCE_SIZE, len(data))
         packed = struct.pack(fmt, self.nonce, key_handle, len(data), data)
         YHSM_Cmd.__init__(self, stick, defines.YSM_AEAD_DECRYPT_CMP, packed)
 
@@ -184,9 +184,9 @@ class YHSM_Cmd_AEAD_Decrypt_Cmp(YHSM_Cmd):
         #   uint32_t keyHandle;                 // Key handle
         #   YSM_STATUS status;                  // Status
         # } YSM_AEAD_DECRYPT_CMP_RESP;
-        fmt = "< %is I B" % (defines.YSM_AEAD_NONCE_SIZE)
+        fmt = "< {:d}s I B".format(defines.YSM_AEAD_NONCE_SIZE)
         nonce, key_handle, self.status = struct.unpack(fmt, data)
-        util.validate_cmd_response_str('nonce', nonce, self.nonce)
+        util.validate_cmd_response_bytes('nonce', nonce, self.nonce)
         util.validate_cmd_response_hex('key_handle', key_handle, self.key_handle)
         if self.status == defines.YSM_STATUS_OK:
             return True
@@ -203,14 +203,14 @@ class YHSM_GeneratedAEAD():
         self.data = aead
 
     def __repr__(self):
-        nonce_str = "None"
+        nonce = "None"
         if self.nonce is not None:
             #Python3
-            nonce_str = ''.join(['{:02x}'.format(ord(c)) for c in self.nonce])
-        return '<%s instance at %s: nonce=%s, key_handle=0x%x, data=%i bytes>' % (
+            nonce = self.nonce
+        return '<{} instance at {}: nonce={}, key_handle=0x{:x}, data={} bytes>'.format(
             self.__class__.__name__,
             hex(id(self)),
-            nonce_str,
+            nonce,
             self.key_handle,
             len(self.data)
             )
@@ -223,7 +223,7 @@ class YHSM_GeneratedAEAD():
         @type filename: string
         """
         aead_f = open(filename, "wb")
-        fmt = "< B I %is %is" % (defines.YSM_AEAD_NONCE_SIZE, len(self.data))
+        fmt = "< B I {:d}s {:d}s".format(defines.YSM_AEAD_NONCE_SIZE, len(self.data))
         version = 1
         packed = struct.pack(fmt, version, self.key_handle, self.nonce, self.data)
         aead_f.write(YHSM_AEAD_File_Marker + packed)
@@ -241,9 +241,9 @@ class YHSM_GeneratedAEAD():
         if buf.startswith(YHSM_AEAD_CRLF_File_Marker):
             buf = YHSM_AEAD_File_Marker + buf[len(YHSM_AEAD_CRLF_File_Marker):]
         if buf.startswith(YHSM_AEAD_File_Marker):
-            if buf[len(YHSM_AEAD_File_Marker)] == chr(1):
+            if buf[len(YHSM_AEAD_File_Marker)] == 1:
                 # version 1 format
-                fmt = "< I %is" % (defines.YSM_AEAD_NONCE_SIZE)
+                fmt = "< I {:d}s".format(defines.YSM_AEAD_NONCE_SIZE)
                 self.key_handle, self.nonce = struct.unpack_from(fmt, buf, len(YHSM_AEAD_File_Marker) + 1)
                 self.data = buf[len(YHSM_AEAD_File_Marker) + 1 + struct.calcsize(fmt):]
             else:
@@ -266,4 +266,4 @@ class YHSM_YubiKeySecret():
         #   uint8_t key[KEY_SIZE];              // AES key
         #   uint8_t uid[UID_SIZE];              // Unique (secret) ID
         # } YUBIKEY_SECRETS;
-        return self.key + self.uid.ljust(defines.UID_SIZE, chr(0))
+        return self.key + self.uid.ljust(defines.UID_SIZE, b'\x00')

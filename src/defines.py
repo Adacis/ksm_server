@@ -189,4 +189,4 @@ def cmd2str(cmd):
              }
     if cmd in known:
         return known[cmd]
-    return "0x%02x" % (cmd)
+    return "0x{:02x}".format(cmd)

@@ -67,7 +67,7 @@ class YHSM_Cmd():
         unlock = self.stick.acquire()
         try:
             if self.stick.debug:
-                debug_info = "%s (payload %i/0x%x)" % (defines.cmd2str(self.command), \
+                debug_info = "{} (payload {:d}/0x{:x})".format(defines.cmd2str(self.command), \
                                                         len(self.payload), len(self.payload))
             self.stick.write(cmd_buf, debug_info)
             if not read_response:
@@ -100,9 +100,9 @@ class YHSM_Cmd():
         response_len -= 1 # the status byte has been read already
         debug_info = None
         if response_status & defines.YSM_RESPONSE:
-            debug_info = "%s response (%i/0x%x bytes)" \
-                % (defines.cmd2str(response_status - defines.YSM_RESPONSE), \
-                       response_len, response_len)
+            debug_info = "{} response ({:d}/0x{:x} bytes)".format( \
+                    defines.cmd2str(response_status - defines.YSM_RESPONSE), \
+                    response_len, response_len)
         # read YSM_PKT.payload
         res = self.stick.read(response_len, debug_info)
         if res:
@@ -126,8 +126,9 @@ class YHSM_Cmd():
         """
         if not res:
             reset(self.stick)
-            raise ksmexception.YHSM_Error('YubiHSM did not respond to command %s' \
-                                                 % (defines.cmd2str(self.command)) )
+            raise ksmexception.YHSM_Error(
+                    'YubiHSM did not respond to command {}'.format(\
+                            defines.cmd2str(self.command)) )
         # try to check if it is a YubiHSM in configuration mode
         self.stick.write('\r\r\r', '(mode test)')
         res2 = self.stick.read(50) # expect a timeout
@@ -135,8 +136,8 @@ class YHSM_Cmd():
         for this in lines:
             if re.match('^(NO_CFG|WSAPI|HSM).*> .*', this):
                 raise ksmexception.YHSM_Error('YubiHSM is in configuration mode')
-        raise ksmexception.YHSM_Error('Unknown response from serial device %s : "%s"' \
-                                             % (self.stick.device, res.encode('hex')))
+        raise ksmexception.YHSM_Error('Unknown response from serial device {} : "{}"'.format(
+            self.stick.device, res.encode('hex')))
 
     def parse_result(self, data):
         """

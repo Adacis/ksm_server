@@ -11,7 +11,6 @@ import os
 import sys
 
 import aead_cmd
-import soft_hsm
 
 __all__ = [
     # constants
@@ -52,7 +51,7 @@ class _ctr_counter():
         return self.pack()
 
     def pack(self):
-        fmt = b'< B I %is BBB 2s' % (defines.YSM_AEAD_NONCE_SIZE)
+        fmt = '< B I {:d}s BBB 2s'.format(defines.YSM_AEAD_NONCE_SIZE)
         val = struct.pack('> H', self.value)
         return struct.pack(fmt,
                            self.flags,
