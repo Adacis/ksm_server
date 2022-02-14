@@ -135,28 +135,25 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
 
         public_id, _otp = yubikey.split_id_otp(from_key)
 
+        aead = ""
         try:
             aead = self.aead_backend.load_aead(public_id)
         except Exception as e:
             self.log_error(str(e))
-            if self.stats_url:
-                stats['no_aead'] += 1
             return "ERR Unknown public_id"
-        # try:
 
-        res = yubikey.validate_yubikey_with_aead(self.hsm, from_key, aead, aead.key_handle)
-        # XXX double-check public_id in res, in case BaseHTTPServer suddenly becomes multi-threaded
-        # XXX fix use vs session counter confusion
-        val_res = "OK counter=%04x low=%04x high=%02x use=%02x" % \
-            (res.use_ctr, res.ts_low, res.ts_high, res.session_ctr)
-        if self.stats_url:
-            stats['ok'] += 1
-        # except ksmexception.YHSM_Error as e:
-        #     self.log_error ("IN: %s, Validate FAILED: %s" % (from_key, str(e)))
-        #     val_res = "ERR"
-        #     if self.stats_url:
-        #         stats['err'] += 1
-        self.log_message("SUCCESS OTP i %s PT hsm %s", from_key, val_res)
+        try:
+
+            res = yubikey.validate_yubikey_with_aead(self.hsm, from_key, aead, aead.key_handle)
+            # XXX double-check public_id in res, in case BaseHTTPServer suddenly becomes multi-threaded
+            # XXX fix use vs session counter confusion
+            val_res = "OK counter=%04x low=%04x high=%02x use=%02x" % (res.use_ctr, res.ts_low, res.ts_high, res.session_ctr)
+            self.log_message("SUCCESS OTP i %s PT hsm %s", from_key, val_res)
+
+        except ksmexception.YHSM_Error as e:
+            self.log_error ("IN: %s, Validate FAILED: %s" % (from_key, str(e)))
+            val_res = "ERR"
+
         return val_res
 
     def log_error(self, fmt, *fmt_args):
@@ -222,20 +219,19 @@ class SQLBackend(object):
         try:
             s = sqlalchemy.select([self.aead_table]).where(self.aead_table.c.public_id == public_id)
             result = connection.execute(s)
-
             for row in result:
                 kh_int = row['keyhandle']
-                aead = aead_cmd.YHSM_GeneratedAEAD(None, kh_int, '')
+                aead_ = aead_cmd.YHSM_GeneratedAEAD(None, kh_int, '')
                 #Benjamin
                 if(type(row['aead']) == string):
-                    aead.data = bytes(row['aead'], encoding="utf-8")
+                    aead_.data = bytes(row['aead'], encoding="utf-8")
                 else:
-                    aead.data = row['aead']
-                aead.nonce = bytes(row['nonce'], encoding="utf-8")
-            return aead
+                    aead_.data = row['aead']
+                aead_.nonce = bytes(row['nonce'], encoding="utf-8")
+            return aead_
         except Exception as e:
             trans.rollback()
-            my_log_message(True, syslog.LOG_INFO, str(e))
+            #my_log_message(True, syslog.LOG_INFO, str(e))
             raise Exception("No AEAD in DB for public_id %s (%s)" % (public_id, "nothing"))
         finally:
             connection.close()

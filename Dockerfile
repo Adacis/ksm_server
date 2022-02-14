@@ -30,13 +30,13 @@ COPY ./src/*.py /etc/adacis/
 #Création des ressources
 RUN mkdir -p /etc/yubico/yhsm
 
-COPY ./generateKey.sh /etc/yubico/yhsm
-COPY ./generate_keys_bdd.py /etc/yubico/yhsm
-COPY ./decrypt_aead_bdd.py /etc/yubico/yhsm
+# COPY ./generateKey.sh /etc/yubico/yhsm
+# COPY ./generate_keys_bdd.py /etc/yubico/yhsm
+# COPY ./decrypt_aead_bdd.py /etc/yubico/yhsm
 
 #DEV
-RUN mkdir -p /var/cache/yubikey-ksm/aeads
-RUN cd /etc/yubico/yhsm ; ./generateKey.sh
+#RUN mkdir -p /var/cache/yubikey-ksm/aeads
+#RUN cd /etc/yubico/yhsm ; ./generateKey.sh
 # VERSION FICHIER
 CMD ["yhsm-yubikey-ksm", "-D", "/etc/yubico/yhsm/keys.json", "-v",  "--key-handle", "1", "--addr", "0.0.0.0"]
 
