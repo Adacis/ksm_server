@@ -72,3 +72,5 @@ services:
 ```
 
 ## Generate 
+docker exec -it ksm python3 /etc/adacis/generate_keys_bdd.py -D /etc/yubico/yhsm/keys.json --key-handle 1 -c 1
+docker exec -it ksm python3 /etc/adacis/decrypt_aead_bdd.py -D /etc/yubico/yhsm/keys.json --public-id ccccccccccce
