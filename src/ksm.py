@@ -128,7 +128,7 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
         on YubiHSM errors (or bad OTP), only 'ERR' is returned.
         """
         if not re.match(valid_input_from_key, from_key):
-            self.log_error("IN: %s, Invalid OTP" % (from_key))
+            self.log_error("IN: {}, Invalid OTP".format(from_key))
             if self.stats_url:
                 stats['invalid'] += 1
             return "ERR Invalid OTP"
@@ -156,9 +156,9 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
 
         return val_res
 
-    def log_error(self, fmt, *fmt_args):
+    def log_error(self, fmt):
         """ Log to syslog. """
-        msg = self.my_address_string() + " - - " + fmt % fmt_args
+        msg = self.my_address_string() + " - - " + fmt
         my_log_message(self.verbose, syslog.LOG_ERR, msg)
 
     def log_message(self, fmt, *fmt_args):
@@ -457,7 +457,6 @@ def main():
                            'Failed opening soft YHSM "%s" : %s' % (args.device, e))
             return 1
 
-
     if args.daemon:
         with context:
             run(hsm, aead_backend, args)
@@ -468,7 +467,6 @@ def main():
             print ("")
             print ("Shutting down")
             print ("")
-
 
 if __name__ == '__main__':
     sys.exit(main())
