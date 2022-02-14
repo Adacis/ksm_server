@@ -11,6 +11,7 @@ import os
 import sys
 
 import aead_cmd
+import soft_hsm
 
 __all__ = [
     # constants
@@ -152,7 +153,7 @@ def crc16(data):
 
 class SoftYHSM(object):
     def __init__(self, keys, debug=False):
-        self._buffer = ''
+        self._buffer = b''
         self.debug = debug
         if not keys:
             raise ValueError('Data contains no key handles!')

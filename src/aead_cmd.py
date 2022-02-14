@@ -266,4 +266,4 @@ class YHSM_YubiKeySecret():
         #   uint8_t key[KEY_SIZE];              // AES key
         #   uint8_t uid[UID_SIZE];              // Unique (secret) ID
         # } YUBIKEY_SECRETS;
-        return self.key + self.uid.ljust(defines.UID_SIZE, b'\x00')
+        return self.key + self.uid.ljust(defines.UID_SIZE, chr(0))

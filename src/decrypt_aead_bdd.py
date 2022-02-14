@@ -1,12 +1,8 @@
 import os
-import re
-import sys
-import fcntl
 import argparse
-import traceback
-import struct
 import sqlalchemy
-import pyhsm
+import soft_hsm
+import defines
 
 def parse_args():
     parser = argparse.ArgumentParser(description = 'Decrypt AEADs',
@@ -32,17 +28,17 @@ def main():
     args = parse_args()
     
 
-    engine = sqlalchemy.create_engine('mysql://'+os.environ['USER']+':'+os.environ['PASSWORD']+'@'+os.environ['DATABASEHOST']+'/'+os.environ['DATABASE'])
+    engine = sqlalchemy.create_engine('mysql://'+os.environ['USER']+':'+os.environ['PASSWORD']+'@'+os.environ['DATABASEIP']+'/'+os.environ['DATABASE'])
     connection = engine.connect()
     sql = sqlalchemy.sql.text("SELECT * FROM aead_table WHERE public_id = :public_id;")
     result = connection.execute(sql, {'public_id': args.public_id}).fetchall()
     
-    hsm = pyhsm.soft_hsm.SoftYHSM.from_file(args.device)
-    pt = pyhsm.soft_hsm.aesCCM(hsm.keys[result[0][1]], result[0][1], result[0][3], result[0][2], decrypt = True)
-    key = pt[:pyhsm.defines.KEY_SIZE]
-    uid = pt[pyhsm.defines.KEY_SIZE:]
+    hsm = soft_hsm.SoftYHSM.from_file(args.device)
+    pt = soft_hsm.aesCCM(hsm.keys[result[0][1]], result[0][1], bytes(result[0][3],encoding="utf-8" ), result[0][2], decrypt = True)
+    key = pt[:defines.KEY_SIZE]
+    uid = pt[defines.KEY_SIZE:]
     
-    print("ykpersonalize -1 -ofixed=%s -ouid=%s -a%s" % (args.public_id,uid.encode('hex'),key.encode('hex')))
+    print("ykpersonalize -1 -ofixed={} -ouid={} -a{}".format(args.public_id,''.join(["%02x" % x for x in uid]),''.join(["%02x" % x for x in key])))
 
 if __name__ == '__main__':
     main()

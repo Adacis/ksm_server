@@ -24,7 +24,7 @@ RUN apt install -y python3 python3-pymysql python3-pip default-mysql-client mari
 RUN pip install python-daemon sqlalchemy db pycrypto
 RUN pip install chardet
 RUN mkdir -p /etc/adacis
-COPY ./src/*.py /etc/adacis/
+COPY ./src /etc/adacis/
 #######
 
 #Création des ressources

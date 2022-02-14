@@ -1,16 +1,18 @@
 # Benjamin AIMARD 1.0 Fix bdd
+import binascii
+import util
 import os
 import sys
 import argparse
-import pyhsm
-import pyhsm.yubikey
-import struct
+import yubikey
 import sqlalchemy
-from pprint import pprint
+import aead_cmd
+from soft_hsm import SoftYHSM
+from soft_hsm import aesCCM
+import defines
 
 default_device = "/dev/ttyACM0"
 default_dir = "/var/cache/yubikey-ksm/aeads"
-
 
 def parse_args():
     """
@@ -86,14 +88,12 @@ def args_fixup(args):
             maxres = calc
 
     args.start_id = start_id_fixup(maxres)+1
-            
-     
 
 def start_id_fixup(start_id):
     try:
         n = int(start_id)
     except ValueError:
-        hexstr = pyhsm.yubikey.modhex_decode(start_id)
+        hexstr = yubikey.modhex_decode(start_id)
         n = int(hexstr, 16)
 
     if(n < 0):
@@ -111,7 +111,6 @@ def get_last_id():
     result = connection.execute(sql).fetchall()
     return result
 
-
 def keyhandles_fixup(args):
     """
     Walk through the supplied key handles and normalize them, while keeping
@@ -121,7 +120,7 @@ def keyhandles_fixup(args):
     new_handles = {}
     for val in args.key_handles:
         for this in val.split(','):
-            n = pyhsm.util.key_handle_to_int(this)
+            n = util.key_handle_to_int(this)
             new_handles[n] = this
 
     args.key_handles = new_handles
@@ -151,25 +150,25 @@ def gen_keys(hsm, args):
     for int_id in range(args.start_id, args.start_id + args.count):
 
         public_id = ("%x" % int_id).rjust(args.public_id_chars, '0')
-        padded_id = pyhsm.yubikey.modhex_encode(public_id)
-        print(padded_id)
-        num_bytes = len(pyhsm.aead_cmd.YHSM_YubiKeySecret('a' * 16, 'b' * 6).pack())
+        padded_id = yubikey.modhex_encode(public_id)
+        num_bytes = len(aead_cmd.YHSM_YubiKeySecret('a' * 16, 'b' * 6).pack())
         hsm.load_random(num_bytes)
 
+        nonce = ""
         for kh in args.key_handles.keys():
             # numero de la clef a utiliser
             if args.random_nonce:
                 nonce = ""
             else:
-                nonce = public_id.decode('hex')
+                nonce = bytes.fromhex(public_id)
 
             aead = hsm.generate_aead(nonce, kh)
-            pt = pyhsm.soft_hsm.aesCCM(hsm.keys[kh], aead.key_handle, aead.nonce, aead.data, decrypt = True)
-            key = pt[:pyhsm.defines.KEY_SIZE]
-            uid = pt[pyhsm.defines.KEY_SIZE:]
+            pt = aesCCM(hsm.keys[kh], aead.key_handle, aead.nonce, aead.data, decrypt = True)
+            key = pt[:defines.KEY_SIZE]
+            uid = pt[defines.KEY_SIZE:]
 
         if not insert_query(padded_id, aead, kh):
-            print("WARNING: could not insert %s" % public_id)
+            print("WARNING: could not insert {}".format(public_id))
 
 
 def main():
@@ -178,7 +177,7 @@ def main():
 
     # quelques traitements sur les arguments
     args_fixup(args)
-    hsm = pyhsm.soft_hsm.SoftYHSM.from_file(args.device)
+    hsm = SoftYHSM.from_file(args.device)
     gen_keys(hsm, args) 
 
 

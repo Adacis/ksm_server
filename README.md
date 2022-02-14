@@ -1,6 +1,12 @@
 # ksm_server
 KSM server compatible hsm for yubikey OTP (compatible with all yubikey
 
+## docker file
+```
+docker build ../build_ksm -t ksm
+```
+
+## docker compose
 .env
 ```
 USERDB=otp
@@ -58,3 +64,11 @@ services:
       networks:
         - auth
 ```
+
+## Generate AES KEY
+
+```
+/etc/adacis/tools/generateKey.sh
+```
+
+## Generate 
