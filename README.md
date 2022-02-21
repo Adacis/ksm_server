@@ -1,12 +1,21 @@
 # ksm_server
-KSM server compatible hsm for yubikey OTP (compatible with all yubikey
+Server as Key System Manager (KSM), for YUBIOTP embeded in yubikey. (Becarefull you certainely need a validation server)
 
-## docker file
-```
-docker build ../build_ksm -t ksm
-```
+## How to
 
-## docker compose
+### Directory configuration
+
+First walk into example folder there are : 
+- conf_ksm: contains secret AESKEY to encrypt all yubikey synchronous secret
+- data_db: for the persistence of database data
+- aead_table.sql: create aead table that is used by the KSM server
+- docker-compose.yml: example of docker-compose file
+- generateKey.sh: that allow to generate an AES key
+
+### step by step
+
+#### Create .env file
+
 .env
 ```
 USERDB=otp
@@ -14,65 +23,61 @@ PASSWORDDB=otp
 DATABASE=otp
 DATABASEIP=database
 ```
-docker-compose.yml
-```
-version: '3.8'
-services:
-    ksm:
-      image: ksm:latest
-      container_name: ksm
-      user: root
-      depends_on:
-        - database
-      environment:
-        USER: ${USERDB}
-        PASSWORD: ${PASSWORDDB}
-        DATABASE: ${DATABASE}
-        DATABASEIP: ${DATABASEIP}
-        DATABASETYPE: mysql
-      command: ["/usr/bin/python3", "/etc/adacis/ksm.py", "-D", "/etc/yubico/yhsm/keys.json", "-v", "--key-handle", "1", "--addr", "0.0.0.0", "--db-url", "mysql://${USERDB}:${PASSWORDDB}@${DATABASEIP}/${DATABASE}", "--debug"]
-      volumes:
-        - ./conf_ksm/keys.json:/etc/yubico/yhsm/keys.json
-        - ./conf_ksm/yubikey_ksm.py:/usr/local/lib/python2.7/dist-packages/pyhsm/ksm/yubikey_ksm.py
-      networks:
-        - auth
-      ports:
-        - 8002:8002
 
-    database: 
-      image: mariadb
-      container_name: database
-      volumes: 
-        - "./data_db:/var/lib/mysql"
-        - "./conf_db/replication.cnf:/etc/mysql/conf.d/replication.cnf"
-      ports:
-        - 3306:3306
-      environment:
-        MYSQL_ROOT_PASSWORD: ${PASSWORDDB}
-        MYSQL_DATABASE: ${DATABASE}
-        MYSQL_USER: ${USERDB}
-        MYSQL_PASSWORD: ${PASSWORDDB}
-      networks:
-        - auth
-
-    phpmyadmin:
-      image: phpmyadmin
-      environment: 
-        PMA_ARBITRARY: 1
-      ports:
-        - 8080:80
-      networks:
-        - auth
-```
-
-## Generate AES KEY
+#### Configure KSM:
 
 ```
-/etc/adacis/tools/generateKey.sh
+git clone https://github.com/Adacis/ksm_server.git
+cd ksm_server
+chmod +x generateKey.sh
+./generateKey.sh
+mv keys.json conf_ksm
 ```
 
-## Generate
+#### Start project:
+
+```
+docker-compose up -d
+```
+
+#### Create table
+
+```
+docker exec -u mysql -i database bash -c 'mariadb -u${MYSQL_USER} -p${MYSQL_PASSWORD} ${MYSQL_DATABASE}' < aead_table.sql
+```
+
+#### Generate new secret
 ```
 docker exec -it ksm python3 /etc/adacis/generate_keys_bdd.py -D /etc/yubico/yhsm/keys.json --key-handle 1 -c 1
-docker exec -it ksm python3 /etc/adacis/decrypt_aead_bdd.py -D /etc/yubico/yhsm/keys.json --public-id ccccccccccce
+```
+
+#### Generate yubico configuration
+```
+docker exec -it ksm python3 /etc/adacis/decrypt_aead_bdd.py -D /etc/yubico/yhsm/keys.json --public-id <public_id generate in the step before (see in database)>
+```
+so :
+
+```
+docker exec -it ksm python3 /etc/adacis/decrypt_aead_bdd.py -D /etc/yubico/yhsm/keys.json --public-id cccccccccccb
+```
+
+output very secret line : 
+```
+ykpersonalize -1 -ofixed=cccccccccccb -ouid=457e1ef96f98 -ac7a239873d5fe8aaa9f48a330d1e309
+```
+
+#### Configure hardware yubikey
+you can install both package :
+```
+sudo apt install ykman yubikey-personalization
+```
+
+```
+ykpersonalize -1 -ofixed=cccccccccccb -ouid=457e1ef96f98 -ac7a239873d5fe8aaa09f48a330d1e309
+```
+
+or 
+
+```
+ykman otp yubiotp 2 -P cccccccccccb -p 457e1ef96f98 -k c7a239873d5fe8ddd09f48a330d1e309
 ```

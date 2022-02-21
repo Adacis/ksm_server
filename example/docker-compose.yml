@@ -1,0 +1,39 @@
+version: '3'
+services:
+    ksm:
+      image: ghcr.io/adacis/ksm_server:latest
+      container_name: ksm
+      depends_on:
+        - database
+      environment:
+        USER: ${USERDB}
+        PASSWORD: ${PASSWORDDB}
+        DATABASE: ${DATABASE}
+        DATABASEIP: ${DATABASEIP}
+        DATABASETYPE: mysql
+      command: ["/usr/bin/python3", "/etc/adacis/ksm.py", "-D", "/etc/yubico/yhsm/keys.json", "-v", "--key-handle", "1", "--addr", "0.0.0.0", "--db-url", "mysql://${USERDB}:${PASSWORDDB}@${DATABASEIP}/${DATABASE}", "--debug"]
+      volumes:
+        - ./conf_ksm/keys.json:/etc/yubico/yhsm/keys.json
+      ports:
+        - 8002:8002
+
+    database: 
+      image: mariadb
+      container_name: database
+      volumes: 
+        - "./data_db:/var/lib/mysql"
+      ports:
+        - 3306:3306
+      environment:
+        MYSQL_ROOT_PASSWORD: ${PASSWORDDB}
+        MYSQL_DATABASE: ${DATABASE}
+        MYSQL_USER: ${USERDB}
+        MYSQL_PASSWORD: ${PASSWORDDB}
+
+    phpmyadmin:
+      image: phpmyadmin
+      container_name: phpmyadmin
+      environment: 
+        PMA_ARBITRARY: 1
+      ports:
+        - 8080:80
