@@ -1,7 +1,7 @@
 version: '3'
 services:
     ksm:
-      image: ksm_dev:latest
+      image: ghcr.io/adacis/ksm_server:latest
       container_name: ksm
       depends_on:
         - database
@@ -14,7 +14,6 @@ services:
       command: ["/usr/bin/python3", "/etc/adacis/ksm.py", "-D", "/etc/yubico/yhsm/keys.json", "-v", "--key-handle", "1", "--addr", "0.0.0.0", "--db-url", "mysql://${USERDB}:${PASSWORDDB}@${DATABASEIP}/${DATABASE}", "--debug"]
       volumes:
         - ./conf_ksm/keys.json:/etc/yubico/yhsm/keys.json
-        - /usr/lib/python3.9/http/server.py:/usr/lib/python3.9/http/server.py
       ports:
         - 8002:8002
 
