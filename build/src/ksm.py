@@ -34,6 +34,8 @@ the database) :
                      +-----+
 """
 
+from encodings import utf_8
+from http.client import FORBIDDEN
 import os
 import string
 import sys
@@ -42,6 +44,7 @@ import socket
 import argparse
 import syslog
 import re
+
 import yubikey
 import daemon
 import sqlalchemy
@@ -58,7 +61,7 @@ default_dir = "/var/cache/yubikey-ksm/aeads"
 default_serve_url = "/wsapi/decrypt?otp="
 default_listen_addr = "127.0.0.1"
 default_port = 8002
-default_reqtimeout = 5
+default_reqtimeout = 2
 default_pid_file = None
 default_db_url = None
 
@@ -89,6 +92,7 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
         self.timeout = args.reqtimeout
         self.aead_backend = aead_backend
         self.proxy_ips = args.proxies
+        self.protocol_version = "HTTP/1.0"
         http.server.BaseHTTPRequestHandler.__init__(self, *other_args, **kwargs)
 
     def do_GET(self):
@@ -98,22 +102,35 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
         # out : OK counter=0004 low=f585 high=3e use=03
         if self.path.startswith(self.serve_url):
             from_key = self.path[len(self.serve_url):]
-            val_res = self.decrypt_yubikey_otp(from_key)
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
+            
+            # val_res = self.decrypt_yubikey_otp(from_key)
+            code = 200
+            message = bytes(self.decrypt_yubikey_otp(from_key), encoding="utf-8")
+            
+            self.send_response_only(code)
+            self.send_header('Connection', 'close')
+
+            self.send_header("Content-Type", "text/html")
+            self.send_header('Content-Length', str(len(message)))
             self.end_headers()
-            self.wfile.write(val_res.encode())
-            self.wfile.write(b"\n")
-        elif self.stats_url and self.path == self.stats_url:
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            for key in stats:
-                self.wfile.write(b"%s %d\n" % (key, stats[key]))
+
+            self.wfile.write(message)
+
         else:
-            self.log_error("Bad URL '%s' - I'm serving '%s' (responding 403)" % (self.path, self.serve_url))
-            self.send_response(403, 'Forbidden')
+            self.log_error("Bad URL '{}' - I'm serving '{}' (responding 403)".format(self.path, self.serve_url))
+            code = 403
+            message = b"Forbidden"
+
+            self.send_response(403)
+            self.send_header('Connection', 'close')
+
+            self.send_header("Content-Type", self.error_content_type)
+            self.send_header('Content-Length', str(len(message)))
             self.end_headers()
+
+            self.wfile.write(message)
+        
+        self.close_connection = 1
 
     def decrypt_yubikey_otp(self, from_key):
         """
@@ -147,7 +164,7 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
             res = yubikey.validate_yubikey_with_aead(self.hsm, from_key, aead, aead.key_handle)
             # XXX double-check public_id in res, in case BaseHTTPServer suddenly becomes multi-threaded
             # XXX fix use vs session counter confusion
-            val_res = "OK counter=%04x low=%04x high=%02x use=%02x" % (res.use_ctr, res.ts_low, res.ts_high, res.session_ctr)
+            val_res = "OK counter={} low={} high={} use={}".format(res.use_ctr, res.ts_low, res.ts_high, res.session_ctr)
             self.log_message("SUCCESS OTP i %s PT hsm %s", from_key, val_res)
 
         except ksmexception.YHSM_Error as e:
@@ -291,7 +308,7 @@ def parse_args():
                         )
     parser.add_argument('--debug',
                         dest='debug',
-                        action='store_true', default=False,
+                        action='store_true', default=True,
                         help='Enable debug operation'
                         )
     parser.add_argument('--port',
@@ -393,8 +410,7 @@ def run(hsm, aead_backend, args):
     httpd = YHSM_KSMServer(server_address,
                            partial(YHSM_KSMRequestHandler, hsm, aead_backend, args))
     my_log_message(args.debug or args.verbose, syslog.LOG_INFO,
-                   "Serving requests to 'http://%s:%s%s' with key handle(s) %s (YubiHSM: '%s', AEADs in '%s', DB in '%s')"
-                   % (args.listen_addr, args.listen_port, args.serve_url, args.key_handles, args.device, args.aead_dir, args.db_url))
+                   "Serving requests to 'http://{}:{}{}' with key handle(s) {} (YubiHSM: '{}', AEADs in '{}', DB in '{}')".format(args.listen_addr, args.listen_port, args.serve_url, args.key_handles, args.device, args.aead_dir, args.db_url))
     httpd.serve_forever()
 
 
@@ -404,7 +420,7 @@ def my_log_message(verbose, prio, msg):
     """
     syslog.syslog(prio, msg)
     if verbose or prio == syslog.LOG_ERR:
-        sys.stderr.write("%s\n" % (msg))
+        sys.stderr.write("{}\n".format(msg))
 
 
 def main():
@@ -427,7 +443,7 @@ def main():
             aead_backend = SQLBackend(args.db_url)
         except Exception as e:
             my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
-                           'Could not connect to database "%s" : %s' % (args.db_url, e))
+                           'Could not connect to database "{}" : {}'.format(args.db_url, e))
             return 1
     else:
         # Using the filesystem for AEADs
@@ -435,7 +451,7 @@ def main():
             aead_backend = FSBackend(args.aead_dir, args.key_handles)
         except Exception as e:
             my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
-                           'Could not create AEAD FSBackend: %s' % e)
+                           'Could not create AEAD FSBackend: {}'.format(e))
             return 1
 
     if args.device == '-':
@@ -445,7 +461,7 @@ def main():
             hsm = SoftYHSM.from_json(sys.stdin.read(), debug=args.debug)
         except ValueError as e:
             my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
-                           'Failed opening soft YHSM from stdin : %s' % (e))
+                           'Failed opening soft YHSM from stdin : {}'.format(e))
             return 1
     elif os.path.isfile(args.device):
         print("file")
@@ -454,7 +470,7 @@ def main():
             hsm = SoftYHSM.from_file(args.device, debug=args.debug)
         except ValueError as e:
             my_log_message(args.debug or args.verbose, syslog.LOG_ERR,
-                           'Failed opening soft YHSM "%s" : %s' % (args.device, e))
+                           'Failed opening soft YHSM "{}" : {}'.format(args.device, e))
             return 1
 
     if args.daemon:

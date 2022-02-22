@@ -6,14 +6,26 @@ ARG BUILD_DATE
 LABEL maintainer="b.aimard@adacis.net"
 LABEL build_date="${BUILD_DATE}"
 
-RUN apt update; apt upgrade -y;
-RUN apt install -y python3 python3-pymysql python3-pip default-mysql-client mariadb-client python3-mysqldb
-RUN pip install python-daemon sqlalchemy db pycrypto
-RUN pip install chardet
-RUN mkdir -p /etc/adacis
-COPY ./src /etc/adacis/
+RUN apt update; apt upgrade -y
 
-RUN mkdir -p /etc/yubico/yhsm
+RUN apt install -y \
+            python3 \
+            python3-pymysql \
+            python3-pip \
+            default-mysql-client \
+            mariadb-client \
+            python3-mysqldb
+
+RUN pip install \
+            python-daemon \
+            sqlalchemy \
+            db \
+            pycrypto \
+            chardet
+
+RUN mkdir -p /etc/adacis ; mkdir -p /etc/yubico/yhsm
+
+COPY ./src /etc/adacis/
 
 CMD ["yhsm-yubikey-ksm", "-D", "/etc/yubico/yhsm/keys.json", "-v",  "--key-handle", "1", "--addr", "0.0.0.0"]
 
