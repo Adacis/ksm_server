@@ -138,7 +138,7 @@ def insert_query(publicId, aead, keyhandle):
 
     # creates the query object
     try:
-        sql = aeadobj.insert().values(public_id=publicId, keyhandle=aead.key_handle, nonce=aead.nonce, aead=aead.data)
+        sql = aeadobj.insert().values(public_id=publicId, keyhandle=aead.key_handle, nonce=''.join([ chr(c) for c in aead.nonce ]), aead=aead.data)
         # insert the query
         result = connection.execute(sql)
         return result
@@ -160,8 +160,7 @@ def gen_keys(hsm, args):
             if args.random_nonce:
                 nonce = b""
             else:
-                nonce_bytes = bytes.fromhex(public_id)
-                nonce = ''.join([ chr(c) for c in nonce_bytes ])
+                nonce = bytes.fromhex(public_id)
 
             aead = hsm.generate_aead(nonce, kh)
             # pt = aesCCM(hsm.keys[kh], aead.key_handle, aead.nonce, aead.data, decrypt = True)
