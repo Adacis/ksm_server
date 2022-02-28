@@ -164,7 +164,7 @@ class YHSM_KSMRequestHandler(http.server.BaseHTTPRequestHandler):
             res = yubikey.validate_yubikey_with_aead(self.hsm, from_key, aead, aead.key_handle)
             # XXX double-check public_id in res, in case BaseHTTPServer suddenly becomes multi-threaded
             # XXX fix use vs session counter confusion
-            val_res = "OK counter={} low={} high={} use={}".format(res.use_ctr, res.ts_low, res.ts_high, res.session_ctr)
+            val_res = "OK counter={%04x} low={%04x} high={%02x} use={%02x}".format(res.use_ctr, res.ts_low, res.ts_high, res.session_ctr)
             self.log_message("SUCCESS OTP i %s PT hsm %s", from_key, val_res)
 
         except ksmexception.YHSM_Error as e:
