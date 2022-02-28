@@ -38,7 +38,7 @@ def main():
     key = pt[:defines.KEY_SIZE]
     uid = pt[defines.KEY_SIZE:]
     
-    print("ykpersonalize -1 -ofixed={} -ouid={} -a{}".format(args.public_id,''.join(["%02x" % x for x in uid]),''.join(["%02x" % x for x in key])))
+    print("ykman otp yubiotp 1 -P {} -p {} -k {}".format(args.public_id,''.join(["%02x" % x for x in uid]),''.join(["%02x" % x for x in key])))
 
 if __name__ == '__main__':
     main()
