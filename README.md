@@ -1,5 +1,7 @@
 # ksm_server
-Server as Key System Manager (KSM), for YUBIOTP embeded in yubikey. (Becarefull you certainely need a validation server)
+Server as Key System Manager (KSM), for YUBIOTP embeded in yubikey.
+This all work is based on https://github.com/Yubico/python-pyhsm. We have migrate a part of python library in python3 for maintainability.
+(Becarefull you certainely need a validation server)
 
 ## How to
 
