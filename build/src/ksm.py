@@ -244,8 +244,10 @@ class SQLBackend(object):
                     aead_.data = bytes(row['aead'], encoding="utf-8")
                 else:
                     aead_.data = row['aead']
-                aead_.nonce = bytes(row['nonce'], encoding="utf-8")
+                aead_.nonce = bytes([ ord(c) for c in row['nonce'] ])
+                # aead_.nonce = bytes(row['nonce'], encoding="utf-8") // Good way but not compatible with old version
             return aead_
+
         except Exception as e:
             trans.rollback()
             #my_log_message(True, syslog.LOG_INFO, str(e))

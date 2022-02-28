@@ -107,7 +107,7 @@ def get_last_id():
     engine = sqlalchemy.create_engine('mysql://'+os.environ['USER']+':'+os.environ['PASSWORD']+'@'+os.environ['DATABASEIP']+'/'+os.environ['DATABASE'])
     connection = engine.connect()
     sql = sqlalchemy.sql.text("SELECT public_id FROM aead_table;")
-    # insert the query
+    # insert query
     result = connection.execute(sql).fetchall()
     return result
 
@@ -158,14 +158,15 @@ def gen_keys(hsm, args):
         for kh in args.key_handles.keys():
             # numero de la clef a utiliser
             if args.random_nonce:
-                nonce = ""
+                nonce = b""
             else:
-                nonce = bytes.fromhex(public_id)
+                nonce_bytes = bytes.fromhex(public_id)
+                nonce = ''.join([ chr(c) for c in nonce_bytes ])
 
             aead = hsm.generate_aead(nonce, kh)
-            pt = aesCCM(hsm.keys[kh], aead.key_handle, aead.nonce, aead.data, decrypt = True)
-            key = pt[:defines.KEY_SIZE]
-            uid = pt[defines.KEY_SIZE:]
+            # pt = aesCCM(hsm.keys[kh], aead.key_handle, aead.nonce, aead.data, decrypt = True)
+            # key = pt[:defines.KEY_SIZE]
+            # uid = pt[defines.KEY_SIZE:]
 
         if not insert_query(padded_id, aead, kh):
             print("WARNING: could not insert {}".format(public_id))
@@ -174,9 +175,8 @@ def gen_keys(hsm, args):
 def main():
     # Check des arguments par le parser
     args = parse_args()
-
-    # quelques traitements sur les arguments
     args_fixup(args)
+    # Load YHSM
     hsm = SoftYHSM.from_file(args.device)
     gen_keys(hsm, args) 
 
