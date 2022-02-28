@@ -1,7 +1,7 @@
 version: '3'
 services:
     ksm:
-      image: ghcr.io/adacis/ksm_server:0.0.4-beta
+      image: ghcr.io/adacis/ksm_server:0.0.5-beta
       container_name: ksm
       depends_on:
         - database
